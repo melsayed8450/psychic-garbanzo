@@ -44,7 +44,6 @@ class _TimerPageState extends State<TimerPage> {
 
   void printReadData() async {
     print(await readSolveData());
-    print(solveDataUpdate().length);
     print(await _prefs.toString());
   }
 
@@ -73,10 +72,6 @@ class _TimerPageState extends State<TimerPage> {
         ),
       ),
     );
-  }
-
-  List<Widget> solveDataUpdate() {
-    return solveData;
   }
 
   void getScrambleData() async {
