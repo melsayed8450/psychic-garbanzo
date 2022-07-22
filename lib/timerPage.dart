@@ -36,6 +36,7 @@ class _TimerPageState extends State<TimerPage> {
         prefs.setStringList('solvesData', oldSolves);
       },
     );
+
   }
 
   Future<List<Widget>> getSolvesListWidget() async {
