@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:cube_timer/timerPage.dart';
+import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -12,8 +12,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(),
-      home: SafeArea(
-        child: TimerPage(),
+      home: const Scaffold(
+        body: SafeArea(
+          child: TimerPage(),
+        ),
       ),
     );
   }
