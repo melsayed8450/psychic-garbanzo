@@ -1,225 +1,289 @@
+import 'dart:core';
+import 'dart:math';
+import 'package:confetti/confetti.dart';
 import 'package:cube_timer/solvesPage.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stop_watch_timer/stop_watch_timer.dart';
+import 'package:provider/provider.dart';
+import 'data.dart';
+import 'components/statful_wrapper.dart';
 
-import 'components/scramble_generator.dart';
-
-class TimerPage extends StatefulWidget {
-  const TimerPage({Key? key}) : super(key: key);
-
-  @override
-  State<TimerPage> createState() => _TimerPageState();
-}
-
-class _TimerPageState extends State<TimerPage> {
-  final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
-  StopWatchTimer stopWatchTimer = StopWatchTimer();
-  String scrambleValue = ' \n  \n  \n ';
-  String? solveTime;
-  bool countDownVisible = false;
-  bool stopWatchVisible = true;
-  Future<bool>? rawData;
-
-  StopWatchTimer countDownTimer = StopWatchTimer(
-    mode: StopWatchMode.countDown,
-    presetMillisecond: StopWatchTimer.getMilliSecFromSecond(16),
-  );
-
-  Future<void> saveSolveData(String solveTime, String scramble) async {
-    SharedPreferences prefs = await _prefs;
-    setState(
-      () {
-        List<String> oldSolves = prefs.getStringList("solvesData") ?? [];
-        String newSolve = '$scramble/$solveTime';
-        oldSolves.add(newSolve);
-        prefs.setStringList('solvesData', oldSolves);
-      },
-    );
-
-  }
-
-  Future<List<Widget>> getSolvesListWidget() async {
-    SharedPreferences prefs = await _prefs;
-    return [
-      for (String solve in prefs.getStringList("solvesData") ?? [])
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                '${solve.split('/')[0]}\n\n${solve.split('/')[1]}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ),
-          ),
-        )
-    ];
-  }
-
-  Future<void> getScrambleData() async {
-    String scrambleData = await ScrambleGenerator.getScramble();
-    setState(() {
-      scrambleValue = scrambleData;
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      getScrambleData();
-    });
-  }
-
+class TimerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        color: Colors.black,
-        child: GestureDetector(
-          onTap: () async {
-            setState(
-              () {
-                if (!stopWatchTimer.isRunning && !countDownTimer.isRunning) {
-                  stopWatchVisible = false;
-                  countDownVisible = true;
-                  countDownTimer.onExecute.add(StopWatchExecute.start);
-                  stopWatchTimer.onExecute.add(StopWatchExecute.reset);
-                } else if (!stopWatchTimer.isRunning &&
-                    countDownTimer.isRunning) {
-                  stopWatchVisible = true;
-                  countDownVisible = false;
-                  stopWatchTimer.onExecute.add(StopWatchExecute.start);
-                  countDownTimer.onExecute.add(StopWatchExecute.stop);
-                  countDownTimer.onExecute.add(StopWatchExecute.reset);
-                } else if (stopWatchTimer.isRunning &&
-                    !countDownTimer.isRunning) {
-                  stopWatchTimer.onExecute.add(StopWatchExecute.stop);
-                  saveSolveData(solveTime.toString(), scrambleValue);
-                  getScrambleData();
-                }
-              },
-            );
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    top: 30,
-                    right: 8,
-                    left: 8,
-                  ),
-                  child: Text(
-                    scrambleValue.toString(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      letterSpacing: 3,
-                      decoration: TextDecoration.none,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Stack(
-                  alignment: Alignment.topCenter,
-                  fit: StackFit.expand,
-                  children: [
-                    Visibility(
-                      visible: countDownVisible,
-                      child: StreamBuilder<int>(
-                        stream: countDownTimer.secondTime,
-                        initialData: countDownTimer.secondTime.value,
-                        builder: (context, snap) {
-                          final value = snap.data;
-                          return Text(
-                            value.toString(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 60,
-                              decoration: TextDecoration.none,
+    return Consumer<Data>(builder: (context, data, child) {
+      return Center(
+        child: ConfettiWidget(
+          blastDirectionality: BlastDirectionality.explosive,
+          confettiController: data.controller,
+          blastDirection: -pi / 2,
+          colors: const [Colors.deepPurple, Colors.white, Colors.yellow],
+          gravity: 0.2,
+          emissionFrequency: 0.2,
+          child: Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.black,
+              actions: [
+                PopupMenuButton(
+                  itemBuilder: (context) {
+                    return [
+                      PopupMenuItem<int>(
+                        value: 0,
+                        child: Text("My Solves"),
+                      ),
+                      PopupMenuItem<int>(
+                        value: 1,
+                        child: Text("Cubing News"),
+                      ),
+                    ];
+                  },
+                  onSelected: (value) async {
+                    if (value == 0) {
+                      await data.getSolvesListWidget().then(
+                        (solves) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SolvesPage(
+                                solveData: solves,
+                              ),
                             ),
                           );
                         },
-                      ),
-                    ),
-                    Visibility(
-                      visible: stopWatchVisible,
-                      child: StreamBuilder<int>(
-                        stream: stopWatchTimer.rawTime,
-                        initialData: 0,
-                        builder: (context, snap) {
-                          final value = snap.data;
-                          solveTime = (value! / 1000).toStringAsFixed(2);
-                          return Text(
-                            (value / 1000).toStringAsFixed(2),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 60,
-                              decoration: TextDecoration.none,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                      );
+                    }
+                    if (value == 1) {}
+                  },
                 ),
-              ),
-              Container(
-                alignment: Alignment.bottomRight,
-                padding: const EdgeInsets.all(10),
-                width: 100,
-                height: 100,
-                child: RawMaterialButton(
-                  elevation: 5,
-                  shape: const CircleBorder(),
-                  fillColor: Colors.grey,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 100.0,
-                    height: 100.0,
-                  ),
-                  onPressed: () async {
-                    await getSolvesListWidget().then(
-                      (solves) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SolvesPage(
-                              solveData: solves,
+              ],
+            ),
+            body: Container(
+              color: Colors.black,
+              child: Stack(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            top: 30,
+                            right: 8,
+                            left: 8,
+                          ),
+                          child: StatefulWrapper(
+                            onInit: () {
+                              data.getScrambleData();
+                            },
+                            child: Text(
+                              data.scrambleValue,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 30,
+                                letterSpacing: 3,
+                                decoration: TextDecoration.none,
+                              ),
                             ),
                           ),
-                        );
-                      },
-                    );
-                  },
-                  child: const Icon(
-                    Icons.api_rounded,
-                    size: 50,
-                    color: Colors.white,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          fit: StackFit.expand,
+                          children: [
+                            Visibility(
+                              visible: data.countDownVisible,
+                              child: StreamBuilder<int>(
+                                stream: data.countDownTimer.secondTime,
+                                initialData:
+                                    data.countDownTimer.secondTime.value,
+                                builder: (context, snap) {
+                                  final value = snap.data;
+                                  Future.delayed(Duration.zero, () async {
+                                    data.changeWarnText(value!);
+                                  });
+
+                                  return Text(
+                                    value.toString(),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 60,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            Visibility(
+                              visible: data.stopWatchVisible,
+                              child: StreamBuilder<int>(
+                                stream: data.stopWatchTimer.rawTime,
+                                initialData: 0,
+                                builder: (context, snap) {
+                                  final value = snap.data;
+                                  data.solveTime =
+                                      (value! / 1000).toStringAsFixed(2);
+                                  return Text(
+                                    (value / 1000).toStringAsFixed(2),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 60,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                          flex: 6,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Text(
+                                  data.warningText,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 60,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: 30,
+                                ),
+                                Container(
+                                  width: double.infinity,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      FutureBuilder<int>(
+                                          future: data.getCount(),
+                                          builder: (context,
+                                              AsyncSnapshot<int> snapshot) {
+                                            if (snapshot.data != 0) {
+                                              return Text(
+                                                'Count : ${snapshot.data} ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            } else {
+                                              return Text(
+                                                'Count : - ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            }
+                                          }),
+                                      SizedBox(
+                                        height: 15,
+                                      ),
+                                      FutureBuilder<double>(
+                                          future: data.getPb(),
+                                          builder: (context,
+                                              AsyncSnapshot<double> snapshot) {
+                                            if (snapshot.data != 0) {
+                                              return Text(
+                                                'Best : ${snapshot.data} ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            } else {
+                                              return Text(
+                                                'Best : - ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            }
+                                          }),
+                                      SizedBox(
+                                        height: 15,
+                                      ),
+                                      FutureBuilder(
+                                          future: data.averageof(5),
+                                          builder: (context,
+                                              AsyncSnapshot snapshot) {
+                                            if (snapshot.hasData) {
+                                              return Text(
+                                                'ao5 : ${snapshot.data} ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            } else {
+                                              return Text(
+                                                'ao5 : - ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            }
+                                          }),
+                                      SizedBox(
+                                        height: 15,
+                                      ),
+                                      FutureBuilder(
+                                          future: data.averageof(50),
+                                          builder: (context,
+                                              AsyncSnapshot snapshot) {
+                                            if (snapshot.hasData) {
+                                              return Text(
+                                                'ao50 : ${snapshot.data} ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            } else {
+                                              return Text(
+                                                'ao50 : - ',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 25,
+                                                ),
+                                              );
+                                            }
+                                          }),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                    ],
                   ),
-                ),
+                  GestureDetector(
+                    onTap: () async {
+                      data.pressAction();
+                    },
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
