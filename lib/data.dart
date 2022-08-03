@@ -1,9 +1,9 @@
-import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:confetti/confetti.dart';
 import 'components/scramble_generator.dart';
 import 'package:stop_watch_timer/stop_watch_timer.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 
 class Data extends ChangeNotifier {
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
@@ -26,6 +26,10 @@ class Data extends ChangeNotifier {
   String warningText = '';
   Future<String>? ao5;
   String ao50 = '    ';
+
+  Future<bool> checkConnection() async {
+    return await InternetConnectionChecker().hasConnection;
+  }
 
   void pressAction() {
     if (!stopWatchTimer.isRunning && !countDownTimer.isRunning) {
@@ -179,8 +183,15 @@ class Data extends ChangeNotifier {
   }
 
   Future<void> getScrambleData() async {
-    String scrambleData = await ScrambleGenerator.getScramble();
-    scrambleValue = scrambleData;
-    notifyListeners();
+    try {
+      String scrambleData = await ScrambleGenerator.getScramble();
+      scrambleValue = scrambleData;
+      notifyListeners();
+    } catch (_) {
+      scrambleValue = 'Please check your internet connection';
+      notifyListeners();
+      Future.delayed(Duration(seconds: 5));
+      getScrambleData();
+    }
   }
 }
