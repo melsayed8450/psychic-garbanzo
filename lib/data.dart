@@ -24,6 +24,7 @@ class Data extends ChangeNotifier {
 
   String scrambleValue = 'Loading Scramble';
   String? solveTime;
+  int? countDown;
   bool countDownVisible = false;
   bool stopWatchVisible = true;
   bool scrambleVisible = true;
@@ -34,9 +35,22 @@ class Data extends ChangeNotifier {
   String ao50 = '    ';
   double timerSize = 60;
   List<String>? scrambleAlgorithm;
-  var scrambleAlgorithmString = StringBuffer();
 
+  var scrambleAlgorithmString = StringBuffer();
   String svg = LoadingImage().loadingImage;
+
+  void onBackButtonPressed() async {
+    countDownTimer.onExecute.add(StopWatchExecute.stop);
+    stopWatchTimer.onExecute.add(StopWatchExecute.stop);
+    countDownTimer.onExecute.add(StopWatchExecute.reset);
+    stopWatchTimer.onExecute.add(StopWatchExecute.reset);
+    stopWatchVisible = true;
+    countDownVisible = false;
+    scrambleVisible = true;
+    averagesVisible = true;
+    timerSize -= 50;
+    notifyListeners();
+  }
 
   void pressAction() async {
     if (!stopWatchTimer.isRunning && !countDownTimer.isRunning) {
@@ -44,12 +58,12 @@ class Data extends ChangeNotifier {
       countDownVisible = true;
       scrambleVisible = false;
       averagesVisible = false;
-      timerSize += 50;
       countDownTimer.onExecute.add(StopWatchExecute.start);
       stopWatchTimer.onExecute.add(StopWatchExecute.reset);
       Future.delayed(Duration.zero, () async {
         warningText = '';
       });
+      timerSize += 50;
       notifyListeners();
     } else if (!stopWatchTimer.isRunning && countDownTimer.isRunning) {
       stopWatchVisible = true;
@@ -62,13 +76,12 @@ class Data extends ChangeNotifier {
       });
       notifyListeners();
     } else if (stopWatchTimer.isRunning && !countDownTimer.isRunning) {
-      timerSize -= 50;
       stopWatchTimer.onExecute.add(StopWatchExecute.stop);
       saveSolveData(solveTime.toString(), scrambleValue);
       scrambleVisible = true;
       averagesVisible = true;
       await scramblingCube();
-
+      timerSize -= 50;
       notifyListeners();
     }
   }
