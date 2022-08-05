@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'data.dart';
 import 'components/statful_wrapper.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:convert';
 
 class TimerPage extends StatelessWidget {
   @override
@@ -74,73 +76,85 @@ class TimerPage extends StatelessWidget {
                           ),
                           child: StatefulWrapper(
                             onInit: () {
-                              data.getScrambleData();
+                              data.scramblingCube();
                             },
-                            child: Text(
-                              data.scrambleValue,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 30,
-                                letterSpacing: 3,
-                                decoration: TextDecoration.none,
-                              ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Visibility(
+                                  visible: data.scrambleVisible,
+                                  child: Text(
+                                    data.scrambleValue,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 30,
+                                      letterSpacing: 3,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.only(bottom: 60),
+                                  child: Visibility(
+                                    visible: data.countDownVisible,
+                                    child: Text(
+                                      'INSPECTION',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
                       Expanded(
                         flex: 2,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          fit: StackFit.expand,
-                          children: [
-                            Visibility(
-                              visible: data.countDownVisible,
-                              child: StreamBuilder<int>(
-                                stream: data.countDownTimer.secondTime,
-                                initialData:
-                                    data.countDownTimer.secondTime.value,
-                                builder: (context, snap) {
-                                  final value = snap.data;
-                                  Future.delayed(Duration.zero, () async {
-                                    data.changeWarnText(value!);
-                                  });
-
-                                  return Text(
-                                    value.toString(),
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
+                        child: StreamBuilder<int>(
+                          stream: data.countDownTimer.secondTime,
+                          initialData: data.countDownTimer.secondTime.value,
+                          builder: (context, snap) {
+                            final countDownValue = snap.data;
+                            data.changeWarnText(countDownValue!);
+                            return StreamBuilder<int>(
+                              stream: data.stopWatchTimer.rawTime,
+                              initialData: 0,
+                              builder: (context, snap) {
+                                final stopWatchValue = snap.data;
+                                data.solveTime =
+                                    (stopWatchValue! / 1000).toStringAsFixed(2);
+                                return AnimatedDefaultTextStyle(
+                                    duration: Duration(milliseconds: 500),
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 60,
+                                      fontSize: data.timerSize,
                                       decoration: TextDecoration.none,
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                            Visibility(
-                              visible: data.stopWatchVisible,
-                              child: StreamBuilder<int>(
-                                stream: data.stopWatchTimer.rawTime,
-                                initialData: 0,
-                                builder: (context, snap) {
-                                  final value = snap.data;
-                                  data.solveTime =
-                                      (value! / 1000).toStringAsFixed(2);
-                                  return Text(
-                                    (value / 1000).toStringAsFixed(2),
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 60,
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Visibility(
+                                          visible: data.stopWatchVisible,
+                                          child: Text(
+                                            (stopWatchValue / 1000)
+                                                .toStringAsFixed(2),
+                                          ),
+                                        ),
+                                        Visibility(
+                                          visible: data.countDownVisible,
+                                          child: Text(
+                                            countDownValue.toString(),
+                                          ),
+                                        ),
+                                      ],
+                                    ));
+                              },
+                            );
+                          },
                         ),
                       ),
                       Expanded(
@@ -162,110 +176,126 @@ class TimerPage extends StatelessWidget {
                                 SizedBox(
                                   height: 30,
                                 ),
-                                Container(
-                                  width: double.infinity,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      FutureBuilder<int>(
-                                          future: data.getCount(),
-                                          builder: (context,
-                                              AsyncSnapshot<int> snapshot) {
-                                            if (snapshot.data != 0) {
-                                              return Text(
-                                                'Count : ${snapshot.data} ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            } else {
-                                              return Text(
-                                                'Count : - ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            }
-                                          }),
-                                      SizedBox(
-                                        height: 15,
-                                      ),
-                                      FutureBuilder<double>(
-                                          future: data.getPb(),
-                                          builder: (context,
-                                              AsyncSnapshot<double> snapshot) {
-                                            if (snapshot.data != 0) {
-                                              return Text(
-                                                'Best : ${snapshot.data} ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            } else {
-                                              return Text(
-                                                'Best : - ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            }
-                                          }),
-                                      SizedBox(
-                                        height: 15,
-                                      ),
-                                      FutureBuilder(
-                                          future: data.averageof(5),
-                                          builder: (context,
-                                              AsyncSnapshot snapshot) {
-                                            if (snapshot.hasData) {
-                                              return Text(
-                                                'ao5 : ${snapshot.data} ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            } else {
-                                              return Text(
-                                                'ao5 : - ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            }
-                                          }),
-                                      SizedBox(
-                                        height: 15,
-                                      ),
-                                      FutureBuilder(
-                                          future: data.averageof(50),
-                                          builder: (context,
-                                              AsyncSnapshot snapshot) {
-                                            if (snapshot.hasData) {
-                                              return Text(
-                                                'ao50 : ${snapshot.data} ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            } else {
-                                              return Text(
-                                                'ao50 : - ',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 25,
-                                                ),
-                                              );
-                                            }
-                                          }),
-                                    ],
+                                Visibility(
+                                  visible: data.averagesVisible,
+                                  child: Container(
+                                    width: double.infinity,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            FutureBuilder<int>(
+                                                future: data.getCount(),
+                                                builder: (context,
+                                                    AsyncSnapshot<int>
+                                                        snapshot) {
+                                                  if (snapshot.data != 0) {
+                                                    return Text(
+                                                      'Count : ${snapshot.data} ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    return Text(
+                                                      'Count : - ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  }
+                                                }),
+                                            SizedBox(
+                                              height: 15,
+                                            ),
+                                            FutureBuilder<double>(
+                                                future: data.getPb(),
+                                                builder: (context,
+                                                    AsyncSnapshot<double>
+                                                        snapshot) {
+                                                  if (snapshot.data != 0) {
+                                                    return Text(
+                                                      'Best : ${snapshot.data} ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    return Text(
+                                                      'Best : - ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  }
+                                                }),
+                                            SizedBox(
+                                              height: 15,
+                                            ),
+                                            FutureBuilder(
+                                                future: data.averageof(5),
+                                                builder: (context,
+                                                    AsyncSnapshot snapshot) {
+                                                  if (snapshot.hasData) {
+                                                    return Text(
+                                                      'ao5 : ${snapshot.data} ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    return Text(
+                                                      'ao5 : - ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  }
+                                                }),
+                                            SizedBox(
+                                              height: 15,
+                                            ),
+                                            FutureBuilder(
+                                                future: data.averageof(50),
+                                                builder: (context,
+                                                    AsyncSnapshot snapshot) {
+                                                  if (snapshot.hasData) {
+                                                    return Text(
+                                                      'ao50 : ${snapshot.data} ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    return Text(
+                                                      'ao50 : - ',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 25,
+                                                      ),
+                                                    );
+                                                  }
+                                                }),
+                                          ],
+                                        ),
+                                        SvgPicture.string(
+                                          data.svg,
+                                          height: 200,
+                                          width: 200,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],

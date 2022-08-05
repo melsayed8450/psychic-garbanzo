@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:confetti/confetti.dart';
 import 'components/scramble_generator.dart';
 import 'package:stop_watch_timer/stop_watch_timer.dart';
-import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:cuber/cuber.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:developer';
+import 'components/loading_image.dart';
 
 class Data extends ChangeNotifier {
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
@@ -18,23 +23,28 @@ class Data extends ChangeNotifier {
 
   StopWatchTimer stopWatchTimer = StopWatchTimer();
 
-  String scrambleValue = ' \n  \n  \n ';
+  String scrambleValue = 'Loading Scramble';
   String? solveTime;
   bool countDownVisible = false;
   bool stopWatchVisible = true;
+  bool scrambleVisible = true;
+  bool averagesVisible = true;
   Future<bool>? rawData;
   String warningText = '';
   Future<String>? ao5;
   String ao50 = '    ';
+  double timerSize = 60;
 
-  Future<bool> checkConnection() async {
-    return await InternetConnectionChecker().hasConnection;
-  }
+  Cube scrambledCube = Cube.scrambled();
+  String svg = LoadingImage().loadingImage;
 
-  void pressAction() {
+  void pressAction() async {
     if (!stopWatchTimer.isRunning && !countDownTimer.isRunning) {
       stopWatchVisible = false;
       countDownVisible = true;
+      scrambleVisible = false;
+      averagesVisible = false;
+      timerSize += 50;
       countDownTimer.onExecute.add(StopWatchExecute.start);
       stopWatchTimer.onExecute.add(StopWatchExecute.reset);
       Future.delayed(Duration.zero, () async {
@@ -52,26 +62,33 @@ class Data extends ChangeNotifier {
       });
       notifyListeners();
     } else if (stopWatchTimer.isRunning && !countDownTimer.isRunning) {
+      timerSize -= 50;
       stopWatchTimer.onExecute.add(StopWatchExecute.stop);
       saveSolveData(solveTime.toString(), scrambleValue);
-      getScrambleData();
+      scrambleVisible = true;
+      averagesVisible = true;
+      await scramblingCube();
+
       notifyListeners();
     }
   }
 
-  void changeWarnText(int value) {
+  void changeWarnText(int value) async {
     if (value == 5) {
       warningText = 'Hurry Up!';
       notifyListeners();
     }
-    if (value == 0) {
+    if (value == 0 && warningText == 'Hurry Up!') {
       warningText = 'DNF';
+      timerSize -= 50;
       countDownVisible = false;
       stopWatchVisible = true;
       countDownTimer.onExecute.add(StopWatchExecute.reset);
       solveTime = 'DNF';
       saveSolveData(solveTime.toString(), scrambleValue);
-      getScrambleData();
+      scrambleVisible = true;
+      averagesVisible = true;
+      await scramblingCube();
       notifyListeners();
     }
   }
@@ -193,5 +210,38 @@ class Data extends ChangeNotifier {
       Future.delayed(Duration(seconds: 5));
       getScrambleData();
     }
+  }
+
+  Future<void> scramblingCube() async {
+    Cube cube = Cube.solved;
+    await getScrambleData();
+    final scramble = scrambleValue
+        .split(' ')
+        .toString()
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll(' ', '')
+        .split(',');
+    for (String move in scramble) {
+      cube = cube.move(Move.parse(move));
+    }
+
+    String credentials = '';
+    svg = await cube
+        .svg()
+        .replaceAll('#FFFF00', '#FFFF01')
+        .replaceAll('#FFFFFF', '#FFFF02')
+        .replaceAll('#FF9800', '#FFFF03')
+        .replaceAll('#F44336', '#FFFF04')
+        .replaceAll('#FFFF01', '#FFFFFF')
+        .replaceAll('#FFFF02', '#FFFF00')
+        .replaceAll('#FFFF03', '#F44336')
+        .replaceAll('#FFFF04', '#FF9800');
+    credentials = '''${svg}''';
+    Codec<String, String> stringToBase64 = utf8.fuse(base64);
+    String encoded = stringToBase64.encode(credentials);
+    String decoded = stringToBase64.decode(encoded);
+    svg = decoded;
+    notifyListeners();
   }
 }
