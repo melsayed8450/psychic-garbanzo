@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:confetti/confetti.dart';
-import 'components/scramble_generator.dart';
 import 'package:stop_watch_timer/stop_watch_timer.dart';
 import 'package:cuber/cuber.dart';
 import 'dart:async';
@@ -34,8 +33,9 @@ class Data extends ChangeNotifier {
   Future<String>? ao5;
   String ao50 = '    ';
   double timerSize = 60;
+  List<String>? scrambleAlgorithm;
+  var scrambleAlgorithmString = StringBuffer();
 
-  Cube scrambledCube = Cube.scrambled();
   String svg = LoadingImage().loadingImage;
 
   void pressAction() async {
@@ -194,35 +194,57 @@ class Data extends ChangeNotifier {
     return average.toStringAsFixed(2);
   }
 
-  Future<String> initScrambleData() async {
-    String scrambleData = await ScrambleGenerator.getScramble();
-    return scrambleData;
-  }
-
-  Future<void> getScrambleData() async {
-    try {
-      String scrambleData = await ScrambleGenerator.getScramble();
-      scrambleValue = scrambleData;
-      notifyListeners();
-    } catch (_) {
-      scrambleValue = 'Please check your internet connection';
-      notifyListeners();
-      Future.delayed(Duration(seconds: 5));
-      getScrambleData();
-    }
-  }
-
-  Future<void> scramblingCube() async {
-    Cube cube = Cube.solved;
-    await getScrambleData();
-    final scramble = scrambleValue
-        .split(' ')
+  Future<void> getNewScrambleData() async {
+    scrambleAlgorithmString.clear();
+    Cube scrambledCube = Cube.scrambled();
+    scrambleAlgorithm = scrambledCube
+        .solve()
+        ?.algorithm
+        .moves
+        .reversed
+        .toList()
         .toString()
+        .replaceAll('R,', '10,')
+        .replaceAll('R\'', '100')
+        .replaceAll('L,', '20,')
+        .replaceAll('L\'', '200')
+        .replaceAll('U,', '30,')
+        .replaceAll('U\'', '300')
+        .replaceAll('D,', '40,')
+        .replaceAll('D\'', '400')
+        .replaceAll('B,', '50,')
+        .replaceAll('B\'', '500')
+        .replaceAll('F,', '60,')
+        .replaceAll('F\'', '600')
+        .replaceAll('10,', 'R\',')
+        .replaceAll('100', 'R')
+        .replaceAll('20,', 'L\',')
+        .replaceAll('200', 'L')
+        .replaceAll('30,', 'U\',')
+        .replaceAll('300', 'U')
+        .replaceAll('40,', 'D\',')
+        .replaceAll('400', 'D')
+        .replaceAll('50,', 'B\',')
+        .replaceAll('500', 'B')
+        .replaceAll('60,', 'F\',')
+        .replaceAll('600', 'F')
         .replaceAll('[', '')
         .replaceAll(']', '')
         .replaceAll(' ', '')
         .split(',');
-    for (String move in scramble) {
+    scrambleAlgorithm?.forEach((item) {
+      scrambleAlgorithmString.write(
+        '$item ',
+      );
+    });
+    scrambleValue = scrambleAlgorithmString.toString();
+    notifyListeners();
+  }
+
+  Future<void> scramblingCube() async {
+    await getNewScrambleData();
+    Cube cube = Cube.solved;
+    for (String move in scrambleAlgorithm!) {
       cube = cube.move(Move.parse(move));
     }
 
