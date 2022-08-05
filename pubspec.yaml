@@ -48,7 +48,8 @@ dependencies:
 
 
 flutter_native_splash:
- background_image: images/splash.png
+ image: images/splash.png
+ color: "#081b2a"
 
  
 
@@ -81,6 +82,7 @@ flutter:
 
   assets:
      - images/splash.png
+     - images/splash_bakground.png
      - images/loading.svg
 
 
